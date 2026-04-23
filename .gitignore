@@ -1,0 +1,17 @@
+﻿node_modules/
+npm-debug.log*
+.env
+.env.local
+logs/
+*.log
+data/*.json
+!data/.gitkeep
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+dist/
+coverage/
+tmp/
+*.tmp
