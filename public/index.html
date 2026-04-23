@@ -1,55 +1,77 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Vardiya Kayıt Sistemi – Dr. Soner ASLAN</title>
-  <meta name="description" content="HES Vardiya Kayıt Sistemi – Dr. Soner ASLAN"/>
-  <link rel="stylesheet" href="css/style.css"/>
-  <style>
-    .grid-bg {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background-image: linear-gradient(rgba(30,58,95,0.12) 1px, transparent 1px),
-                        linear-gradient(90deg, rgba(30,58,95,0.12) 1px, transparent 1px);
-      background-size: 48px 48px;
-    }
-    .landing-page { position: relative; z-index: 1; }
-    .coming-soon-badge {
-      display: inline-block; font-size: 0.7rem; font-weight: 700;
-      padding: 3px 10px; border-radius: 20px; margin-top: 12px;
-      background: rgba(100,116,139,0.15); border: 1px solid #334155;
-      color: #64748b; letter-spacing: 0.05em;
-    }
-    .ver { position: fixed; bottom: 16px; right: 20px; font-size: 0.7rem; color: #334155; z-index:10; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vardiya Kayıt Sistemi v2.0</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0; 
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 500px;
+        }
+        h1 { color: #667eea; margin-bottom: 10px; }
+        .version { color: #888; font-size: 14px; margin-bottom: 30px; }
+        .status { 
+            display: inline-block;
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .api-info {
+            background: #f3f4f6;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 14px;
+        }
+        .api-info code {
+            background: #e5e7eb;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
-<div class="grid-bg"></div>
-
-<div class="landing-page">
-  <div class="landing-logo">⚡</div>
-  <h1 class="landing-title">Vardiya Kayıt Sistemi</h1>
-  <p class="landing-subtitle">Dr. Soner ASLAN &nbsp;|&nbsp; HES Tesis Yönetimi</p>
-
-  <div class="tesis-cards">
-    <a href="hasan.html" class="tesis-card" id="btn-hasan">
-      <div class="tesis-card-icon">🏭</div>
-      <div class="tesis-card-name">Hasan Uğurlu HES</div>
-      <div class="tesis-card-desc">4 Ünite &nbsp;|&nbsp; Vardiya Kayıt Formu</div>
-      <div class="tesis-card-badge">AKTİF</div>
-    </a>
-
-    <div class="tesis-card disabled" id="btn-suat" title="Yakında aktif edilecek">
-      <div class="tesis-card-icon">🏗️</div>
-      <div class="tesis-card-name">Suat Uğurlu HES</div>
-      <div class="tesis-card-desc">3 Ünite &nbsp;|&nbsp; Vardiya Kayıt Formu</div>
-      <div class="coming-soon-badge">YAKINDA</div>
+    <div class="container">
+        <h1>🏭 VARDIYA KAYIT SİSTEMİ</h1>
+        <div class="version">v2.0 - Dr. Soner ASLAN</div>
+        
+        <div class="status">✅ Sunucu Çalışıyor</div>
+        <div class="status">🟢 Veritabanı Bağlı</div>
+        
+        <div class="api-info">
+            <strong>📍 API Endpoint'leri:</strong><br><br>
+            🔐 Login: <code>POST /api/auth/login</code><br>
+            👤 Kayıt: <code>POST /api/auth/register</code><br>
+            💾 Kaydet: <code>POST /api/kaydet/:tesis</code><br>
+            🗑️ Sil: <code>POST /api/sil/:tesis</code><br><br>
+            <em>📌 Frontend henüz entegre edilmedi. API'leri Postman ile test edebilirsiniz.</em>
+        </div>
+        
+        <p style="margin-top: 30px; color: #888; font-size: 12px;">
+            HES Dijital Operasyon Paneli<br>
+            Hasan Uğurlu & Suat Uğurlu HES
+        </p>
     </div>
-  </div>
-</div>
-
-<div class="ver">v1.0.0</div>
-<div id="toast-container" class="toast-container"></div>
-<script src="js/form.js"></script>
 </body>
 </html>

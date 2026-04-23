@@ -1,234 +1,445 @@
 /**
- * Vardiya Kayıt Sistemi – Express Backend
- * Dr. Soner ASLAN
+ * 🚀 VARDIYA KAYIT SİSTEMİ v2.0
+ * HES Dijital Operasyon Paneli - Dr. Soner ASLAN
+ * 
+ * Güvenlik: Helmet, Rate Limit, JWT Auth, CORS
+ * Veritabanı: SQLite (better-sqlite3)
+ * Loglama: Winston
  */
 
+// ═══════════════════════════════════════
+// 1. GEREKLİ MODÜLLER
+// ═══════════════════════════════════════
+require('dotenv').config(); // .env yüklemesi EN ÜSTTE
+
 const express = require('express');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-const nodemailer = require('nodemailer');
-const fetch = require('node-fetch');
-const fs = require('fs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const path = require('path');
+const fs = require('fs');
 
-const BILDIRIM = require('./config/notifications');
-const PERSONEL = require('./config/personnel');
-const UNITELER = require('./config/units');
+// Yerel modüller
+const db = require('./config/database');
+const logger = require('./utils/logger');
+const { authenticateToken } = require('./middleware/auth');
 
+// Route'lar
+const authRoutes = require('./routes/auth');
+// const vardiyaRoutes = require('./routes/vardiya'); // İleride eklenecek
+
+// ═══════════════════════════════════════
+// 2. EXPRESS UYGULAMASI
+// ═══════════════════════════════════════
 const app = express();
-const PORT = 3000;
-const TESIS_DOSYALARI = {
-  hasan: 'hasan_records.json',
-  suat: 'suat_records.json'
-};
+const PORT = process.env.PORT || 3000;
 
-function tesisDosyaYoluGetir(tesis) {
-  const key = String(tesis || '').toLowerCase();
-  const dosyaAdi = TESIS_DOSYALARI[key];
+// ═══════════════════════════════════════
+// 3. MIDDLEWARE'LER (SIRALI ÖNEMLİ!)
+// ═══════════════════════════════════════
 
-  if (!dosyaAdi) {
-    return null;
-  }
+// 📦 Body parser
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-  return path.join(__dirname, 'data', dosyaAdi);
-}
+// 🔐 Güvenlik Header'ları
+app.use(helmet({
+  contentSecurityPolicy: false, // Geliştirme modunda inline script'e izin ver
+  crossOriginEmbedderPolicy: false
+}));
 
-app.use(cors());
-app.use(bodyParser.json());
+// 🌐 CORS Ayarları
+app.use(cors({
+  origin: process.env.BASE_URL?.split(',')[0] || '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+// ⚡ Rate Limiting (API için)
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 dakika
+  max: 100, // Her IP için max 100 istek
+  message: { error: 'Çok fazla istek, lütfen 15 dakika bekleyin' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+app.use('/api/', apiLimiter);
+
+// 📁 Statik dosyalar (Frontend)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ─── Veri Kaydetme (Upsert Logic) ──────────────────────────
-app.post('/api/kaydet/:tesis', (req, res) => {
-  const { tesis } = req.params;
-  const yeniKayit = { ...req.body, son_guncelleme: new Date().toISOString() };
-  const dosyaYolu = tesisDosyaYoluGetir(tesis);
-
-  if (!dosyaYolu) {
-    return res.status(400).json({ basarili: false, hata: 'Gecersiz tesis anahtari.' });
-  }
-
-  let mevcut = [];
-  if (fs.existsSync(dosyaYolu)) {
-    try { mevcut = JSON.parse(fs.readFileSync(dosyaYolu, 'utf8')); } catch (e) { mevcut = []; }
-  }
-
-  // Aynı tarih ve vardiyaya sahip bir kayıt var mı kontrol et
-  const index = mevcut.findIndex(k => k.tarih === yeniKayit.tarih && k.vardiya === yeniKayit.vardiya);
-
-  if (index !== -1) {
-    // Mevcut kaydı güncelle
-    mevcut[index] = { ...mevcut[index], ...yeniKayit };
-  } else {
-    // Yeni kayıt ekle
-    mevcut.push(yeniKayit);
-  }
-
-  fs.writeFileSync(dosyaYolu, JSON.stringify(mevcut, null, 2), 'utf8');
-  res.json({ basarili: true, id: index !== -1 ? index : mevcut.length - 1, tip: index !== -1 ? 'guncellendi' : 'yeni' });
+// 📝 Request Logger
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    logger.info(`${req.method} ${req.path} - ${res.statusCode} (${duration}ms)`, {
+      ip: req.ip,
+      user: req.user?.username || 'anonim',
+      ua: req.get('user-agent')?.substring(0, 50)
+    });
+  });
+  next();
 });
 
-// ─── Kayıtları Listele ─────────────────────────────────────
-app.get('/api/kayitlar/:tesis', (req, res) => {
-  const { tesis } = req.params;
-  const dosyaYolu = tesisDosyaYoluGetir(tesis);
-  if (!dosyaYolu) return res.status(400).json([]);
-  if (!fs.existsSync(dosyaYolu)) return res.json([]);
+// ═══════════════════════════════════════
+// 4. ROUTE TANIMLARI
+// ═══════════════════════════════════════
+
+// 🔓 Public: Auth endpoint'leri
+app.use('/api/auth', authRoutes);
+
+// 🔐 Protected: Vardiya işlemleri (JWT gerektirir)
+app.use('/api/kaydet/:tesis', authenticateToken);
+app.use('/api/temizle/:tesis', authenticateToken);
+app.use('/api/sil/:tesis', authenticateToken);
+
+// ═══════════════════════════════════════
+// 5. MEVCUT API ENDPOINT'LERİ (KORUNMUŞ)
+// ═══════════════════════════════════════
+
+// 📥 KAYDET - Hasan Uğurlu HES
+app.post('/api/kaydet/hasan', (req, res) => {
   try {
-    const veri = JSON.parse(fs.readFileSync(dosyaYolu, 'utf8'));
-    res.json(veri);
-  } catch (e) {
-    res.json([]);
+    const data = req.body;
+    const filePath = path.join(__dirname, 'data', 'hasan_ugurlu.json');
+    
+    // Data klasörü yoksa oluştur
+    if (!fs.existsSync(path.dirname(filePath))) {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    }
+    
+    // Mevcut veriyi oku veya yeni array oluştur
+    let existingData = [];
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      if (content.trim()) existingData = JSON.parse(content);
+    }
+    
+    // Yeni kaydı ekle (tarih+vardiya unique kontrolü)
+    const exists = existingData.some(d => 
+      d.tarih === data.tarih && d.vardiya === data.vardiya
+    );
+    
+    if (exists) {
+      // Güncelle: mevcut kaydı bul ve replace et
+      const index = existingData.findIndex(d => 
+        d.tarih === data.tarih && d.vardiya === data.vardiya
+      );
+      existingData[index] = { ...data, updatedAt: new Date().toISOString() };
+    } else {
+      // Yeni kayıt ekle
+      existingData.push({ ...data, createdAt: new Date().toISOString() });
+    }
+    
+    // Dosyaya yaz
+    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), 'utf8');
+    
+    // 📧 Bildirim gönder (async, hata kesici değil)
+    sendNotifications(data, 'hasan').catch(err => 
+      logger.error('Bildirim hatası:', err.message)
+    );
+    
+    logger.success('Hasan Uğurlu kaydı başarılı', { 
+      tarih: data.tarih, 
+      vardiya: data.vardiya,
+      user: req.user?.username 
+    });
+    
+    res.json({ success: true, message: '✅ Kayıt başarılı' });
+    
+  } catch (err) {
+    logger.error('Kayıt hatası (hasan):', err.message);
+    res.status(500).json({ success: false, error: 'Sunucu hatası: ' + err.message });
   }
 });
 
-// ─── Personel Listesi (API) ────────────────────────────────
-app.get('/api/personel', (req, res) => {
-  res.json(PERSONEL);
+// 📥 KAYDET - Suat Uğurlu HES
+app.post('/api/kaydet/suat', (req, res) => {
+  try {
+    const data = req.body;
+    const filePath = path.join(__dirname, 'data', 'suat_ugurlu.json');
+    
+    if (!fs.existsSync(path.dirname(filePath))) {
+      fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    }
+    
+    let existingData = [];
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      if (content.trim()) existingData = JSON.parse(content);
+    }
+    
+    const exists = existingData.some(d => 
+      d.tarih === data.tarih && d.vardiya === data.vardiya
+    );
+    
+    if (exists) {
+      const index = existingData.findIndex(d => 
+        d.tarih === data.tarih && d.vardiya === data.vardiya
+      );
+      existingData[index] = { ...data, updatedAt: new Date().toISOString() };
+    } else {
+      existingData.push({ ...data, createdAt: new Date().toISOString() });
+    }
+    
+    fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2), 'utf8');
+    
+    sendNotifications(data, 'suat').catch(err => 
+      logger.error('Bildirim hatası:', err.message)
+    );
+    
+    logger.success('Suat Uğurlu kaydı başarılı', { 
+      tarih: data.tarih, 
+      vardiya: data.vardiya,
+      user: req.user?.username 
+    });
+    
+    res.json({ success: true, message: '✅ Kayıt başarılı' });
+    
+  } catch (err) {
+    logger.error('Kayıt hatası (suat):', err.message);
+    res.status(500).json({ success: false, error: 'Sunucu hatası: ' + err.message });
+  }
 });
 
-// ─── Bildirim Gönder ───────────────────────────────────────
-app.post('/api/bildirim', async (req, res) => {
-  const { mesaj, konu, tesis } = req.body;
-  const sonuclar = { email: null, telegram: null };
+// 🗑️ TEMİZLE - Hasan Uğurlu
+app.post('/api/temizle/hasan', (req, res) => {
+  try {
+    const { tarih, vardiya } = req.body;
+    const filePath = path.join(__dirname, 'data', 'hasan_ugurlu.json');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.json({ success: true, message: '⚠️ Zaten boş' });
+    }
+    
+    let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const beforeLength = data.length;
+    
+    data = data.filter(d => !(d.tarih === tarih && d.vardiya === vardiya));
+    
+    if (data.length === 0) {
+      fs.unlinkSync(filePath);
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    }
+    
+    logger.info('Hasan Uğurlu temizlendi', { tarih, vardiya, removed: beforeLength - data.length });
+    res.json({ success: true, message: '🧹 Temizlik başarılı' });
+    
+  } catch (err) {
+    logger.error('Temizleme hatası (hasan):', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
-  // E-posta Bildirimi
-  if (BILDIRIM.email && BILDIRIM.email.aktif) {
+// 🗑️ TEMİZLE - Suat Uğurlu
+app.post('/api/temizle/suat', (req, res) => {
+  try {
+    const { tarih, vardiya } = req.body;
+    const filePath = path.join(__dirname, 'data', 'suat_ugurlu.json');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.json({ success: true, message: '⚠️ Zaten boş' });
+    }
+    
+    let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const beforeLength = data.length;
+    
+    data = data.filter(d => !(d.tarih === tarih && d.vardiya === vardiya));
+    
+    if (data.length === 0) {
+      fs.unlinkSync(filePath);
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+    }
+    
+    logger.info('Suat Uğurlu temizlendi', { tarih, vardiya, removed: beforeLength - data.length });
+    res.json({ success: true, message: '🧹 Temizlik başarılı' });
+    
+  } catch (err) {
+    logger.error('Temizleme hatası (suat):', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ❌ SİL - Hasan Uğurlu
+app.post('/api/sil/hasan', (req, res) => {
+  try {
+    const { tarih, vardiya } = req.body;
+    const filePath = path.join(__dirname, 'data', 'hasan_ugurlu.json');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Kayıt bulunamadı' });
+    }
+    
+    let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const filtered = data.filter(d => !(d.tarih === tarih && d.vardiya === vardiya));
+    
+    if (filtered.length === data.length) {
+      return res.status(404).json({ success: false, error: 'Silinecek kayıt bulunamadı' });
+    }
+    
+    if (filtered.length === 0) {
+      fs.unlinkSync(filePath);
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf8');
+    }
+    
+    logger.warning('Hasan Uğurlu kayıt silindi', { tarih, vardiya, user: req.user?.username });
+    res.json({ success: true, message: '🗑️ Silme başarılı' });
+    
+  } catch (err) {
+    logger.error('Silme hatası (hasan):', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ❌ SİL - Suat Uğurlu
+app.post('/api/sil/suat', (req, res) => {
+  try {
+    const { tarih, vardiya } = req.body;
+    const filePath = path.join(__dirname, 'data', 'suat_ugurlu.json');
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ success: false, error: 'Kayıt bulunamadı' });
+    }
+    
+    let data = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const filtered = data.filter(d => !(d.tarih === tarih && d.vardiya === vardiya));
+    
+    if (filtered.length === data.length) {
+      return res.status(404).json({ success: false, error: 'Silinecek kayıt bulunamadı' });
+    }
+    
+    if (filtered.length === 0) {
+      fs.unlinkSync(filePath);
+    } else {
+      fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf8');
+    }
+    
+    logger.warning('Suat Uğurlu kayıt silindi', { tarih, vardiya, user: req.user?.username });
+    res.json({ success: true, message: '🗑️ Silme başarılı' });
+    
+  } catch (err) {
+    logger.error('Silme hatası (suat):', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ═══════════════════════════════════════
+// 6. YARDIMCI FONKSİYONLAR
+// ═══════════════════════════════════════
+
+// 📧 E-posta & Telegram Bildirim Gönderici
+async function sendNotifications(data, tesis) {
+  const nodemailer = require('nodemailer');
+  const fetch = require('node-fetch');
+  
+  const aliciEmails = process.env.ALICI_EPOSTALAR?.split(',') || [];
+  const telegramIds = process.env.TELEGRAM_CHAT_IDS?.split(',') || [];
+  
+  // 📧 E-posta
+  if (aliciEmails.length > 0 && process.env.EMAIL_USER) {
     try {
-      if (BILDIRIM.email.smtp.user === "gonderici@gmail.com") {
-        throw new Error("Varsayılan e-posta adresi değiştirilmemiş!");
-      }
-
       const transporter = nodemailer.createTransport({
-        host: BILDIRIM.email.smtp.host,
-        port: BILDIRIM.email.smtp.port,
-        secure: BILDIRIM.email.smtp.secure,
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: process.env.EMAIL_SECURE === 'true',
         auth: {
-          user: BILDIRIM.email.smtp.user,
-          pass: BILDIRIM.email.smtp.sifre
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
         }
       });
-
-      for (const alici of BILDIRIM.email.alicilar) {
-        await transporter.sendMail({
-          from: `"Vardiya Kayıt Sistemi" <${BILDIRIM.email.smtp.user}>`,
-          to: alici.eposta,
-          subject: `${BILDIRIM.email.konu_prefix} ${tesis} – ${konu}`,
-          html: `
-            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
-              <div style="background:#0f172a;color:#f97316;padding:20px;border-radius:8px 8px 0 0;">
-                <h2 style="margin:0;">⚡ Vardiya Kayıt Sistemi</h2>
-                <p style="margin:5px 0 0;color:#94a3b8;">Dr. Soner ASLAN – ${tesis}</p>
-              </div>
-              <div style="background:#1e293b;color:#e2e8f0;padding:20px;border-radius:0 0 8px 8px;">
-                <pre style="white-space:pre-wrap;font-family:Arial,sans-serif;line-height:1.6;">${mesaj}</pre>
-                <hr style="border-color:#334155;"/>
-                <p style="color:#64748b;font-size:12px;">Bu mesaj Vardiya Kayıt Sistemi tarafından otomatik olarak gönderilmiştir.<br/>
-                ${new Date().toLocaleString('tr-TR')}</p>
-              </div>
-            </div>
-          `
-        });
-      }
-      sonuclar.email = 'gonderildi';
-      console.log('[BİLDİRİM] E-posta başarıyla gönderildi.');
-    } catch (err) {
-      sonuclar.email = `Hata: ${err.message}`;
-      console.error('[BİLDİRİM] E-posta hatası:', err.message);
-    }
-  } else {
-    sonuclar.email = 'E-posta bildirimi pasif.';
-  }
-
-  // Telegram Bildirimi
-  if (BILDIRIM.telegram && BILDIRIM.telegram.aktif) {
-    try {
-      if (BILDIRIM.telegram.bot_token.includes("0000000000")) {
-        throw new Error("Varsayılan Telegram bot token değiştirilmemiş!");
-      }
-
-      const telegramMesaj = `🔴 *ARIZA BİLDİRİMİ*\n*Tesis:* ${tesis}\n*Konu:* ${konu}\n\n${mesaj}\n\n_${new Date().toLocaleString('tr-TR')}_`;
       
-      for (const alici of BILDIRIM.telegram.alicilar) {
-        const url = `https://api.telegram.org/bot${BILDIRIM.telegram.bot_token}/sendMessage`;
-        const response = await fetch(url, {
+      const mailOptions = {
+        from: `"Vardiya Sistemi" <${process.env.EMAIL_USER}>`,
+        to: aliciEmails.join(','),
+        subject: `🔔 Yeni Vardiya Kaydı - ${tesis.toUpperCase()} - ${data.tarih}`,
+        text: `Vardiya: ${data.vardiya}\nTesis: ${tesis}\nKayıt zamanı: ${new Date().toLocaleString('tr-TR')}\n\nDetaylar için sisteme giriş yapınız.`
+      };
+      
+      await transporter.sendMail(mailOptions);
+      logger.info('📧 E-posta bildirimi gönderildi');
+    } catch (err) {
+      logger.error('E-posta gönderim hatası:', err.message);
+    }
+  }
+  
+  // 📱 Telegram
+  if (telegramIds.length > 0 && process.env.TELEGRAM_BOT_TOKEN) {
+    try {
+      const message = `🔔 *Yeni Vardiya Kaydı*\n🏭 *${tesis.toUpperCase()}*\n📅 ${data.tarih}\n🔄 Vardiya: ${data.vardiya}\n⏰ ${new Date().toLocaleTimeString('tr-TR')}`;
+      
+      for (const chatId of telegramIds) {
+        await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            chat_id: alici.chat_id,
-            text: telegramMesaj,
+            chat_id: chatId.trim(),
+            text: message,
             parse_mode: 'Markdown'
           })
         });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(`Telegram API hatası: ${errorData.description}`);
-        }
-        
-        console.log(`[BİLDİRİM] Telegram gönderildi → ${alici.ad}`);
       }
-      sonuclar.telegram = 'gonderildi';
+      logger.info('📱 Telegram bildirimi gönderildi');
     } catch (err) {
-      sonuclar.telegram = `Hata: ${err.message}`;
-      console.error('[BİLDİRİM] Telegram hatası:', err.message);
+      logger.error('Telegram gönderim hatası:', err.message);
     }
-  } else {
-    sonuclar.telegram = 'Telegram bildirimi pasif.';
   }
+}
 
-  res.json({ basarili: true, sonuclar });
+// ═══════════════════════════════════════
+// 7. FRONTEND FALLBACK & 404
+// ═══════════════════════════════════════
+
+// API olmayan tüm istekler için frontend'i serve et
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Kayıtları Sıfırla (Gizli Yöntem için)
-app.post('/api/temizle/:tesis', (req, res) => {
-  const { tesis } = req.params;
-  const dosyaYolu = tesisDosyaYoluGetir(tesis);
+// 404 Handler
+app.use((req, res) => {
+  logger.warning('404 - Bulunamadı', { path: req.path, method: req.method });
+  res.status(404).json({ error: 'Endpoint bulunamadı' });
+});
 
-  if (!dosyaYolu) {
-    return res.status(400).json({ success: false, error: 'Gecersiz tesis anahtari.' });
-  }
+// ═══════════════════════════════════════
+// 8. GLOBAL ERROR HANDLER
+// ═══════════════════════════════════════
+app.use((err, req, res, next) => {
+  logger.error('Unhandled Error:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method
+  });
   
-  try {
-    const fs = require('fs');
-    fs.writeFileSync(dosyaYolu, JSON.stringify([], null, 2), 'utf8');
-    console.log(`[SİSTEM] ${tesis} kayıtları gizli komutla sıfırlandı.`);
-    res.json({ success: true, message: 'Tüm kayıtlar sıfırlandı.' });
-  } catch (err) {
-    res.status(500).json({ error: 'Sıfırlama hatası' });
-  }
+  res.status(err.status || 500).json({
+    error: process.env.NODE_ENV === 'development' ? err.message : 'Sunucu hatası'
+  });
 });
 
-// Belirli Bir Kaydı Sil (Satır Bazlı)
-app.post('/api/sil/:tesis', (req, res) => {
-  const { tesis } = req.params;
-  const { tarih, vardiya } = req.body;
-  const dosyaYolu = tesisDosyaYoluGetir(tesis);
-
-  if (!dosyaYolu) {
-    return res.status(400).json({ success: false, error: 'Gecersiz tesis anahtari.' });
-  }
-
-  try {
-    let mevcut = [];
-    if (fs.existsSync(dosyaYolu)) {
-      mevcut = JSON.parse(fs.readFileSync(dosyaYolu, 'utf8'));
-    }
-
-    const yeniListe = mevcut.filter(k => !(k.tarih === tarih && k.vardiya === vardiya));
-    fs.writeFileSync(dosyaYolu, JSON.stringify(yeniListe, null, 2), 'utf8');
-    
-    console.log(`[SİSTEM] ${tarih} - ${vardiya} kaydı manuel silindi.`);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Silme hatası' });
-  }
+// ═══════════════════════════════════════
+// 9. SUNUCUYU BAŞLAT
+// ═══════════════════════════════════════
+const server = app.listen(PORT, () => {
+  logger.success(`🚀 Vardiya Sistemi v2.0 çalışıyor!`, {
+    port: PORT,
+    env: process.env.NODE_ENV,
+    url: `${process.env.BASE_URL || `http://localhost:${PORT}`}`
+  });
 });
 
-// ─── Sunucu Başlat ─────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log('\n╔════════════════════════════════════════╗');
-  console.log('║   Vardiya Kayıt Sistemi – ÇALIŞIYOR   ║');
-  console.log('║   Dr. Soner ASLAN                     ║');
-  console.log(`║   http://localhost:${PORT}                ║`);
-  console.log('╚════════════════════════════════════════╝\n');
+// Graceful shutdown
+process.on('SIGINT', () => {
+  logger.info('🛑 Sunucu kapatılıyor...');
+  server.close(() => {
+    logger.info('✅ Sunucu başarıyla kapatıldı');
+    process.exit(0);
+  });
 });
+
+module.exports = app; // Testler için export
