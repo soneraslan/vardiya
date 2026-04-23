@@ -1,0 +1,198 @@
+[
+  {
+    "tarih": "2026-04-23",
+    "vardiya": "08-16",
+    "personel": {
+      "id": "a1",
+      "ad": "YAHYA GİRGİN",
+      "grup": "A_GRUBU"
+    },
+    "golKotu": 178,
+    "uniteler": [
+      {
+        "id": "u1",
+        "kod": "ÜNİTE-1",
+        "durum": "calisiyor",
+        "events": [
+          {
+            "hat": "kuzey",
+            "devreye_girme": "08:10",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u2",
+        "kod": "ÜNİTE-2",
+        "durum": "duran",
+        "events": [
+          {
+            "hat": "kuzey",
+            "devreye_girme": "09:15",
+            "devreden_cikma": "11:00",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          },
+          {
+            "hat": "kuzey",
+            "devreye_girme": "12:15",
+            "devreden_cikma": "",
+            "ariza_baslama": "13:00",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "86/1",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u3",
+        "kod": "ÜNİTE-3",
+        "durum": "calisiyor",
+        "events": [
+          {
+            "hat": "guney",
+            "devreye_girme": "08:30",
+            "devreden_cikma": "11:00",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          },
+          {
+            "hat": "kuzey",
+            "devreye_girme": "12:10",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u4",
+        "kod": "ÜNİTE-4",
+        "durum": "calisiyor",
+        "events": [
+          {
+            "hat": "guney",
+            "devreye_girme": "10:10",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      }
+    ],
+    "tesis": "hasan",
+    "son_guncelleme": "2026-04-23T17:52:15.798Z"
+  },
+  {
+    "tarih": "2026-04-23",
+    "vardiya": "16-24",
+    "personel": {
+      "id": "b1",
+      "ad": "SERKAN ÇELİK",
+      "grup": "B_GRUBU"
+    },
+    "golKotu": 178,
+    "uniteler": [
+      {
+        "id": "u1",
+        "kod": "ÜNİTE-1",
+        "durum": "calisiyor",
+        "events": [
+          {
+            "hat": "kuzey",
+            "devreye_girme": "",
+            "devreden_cikma": "16:00",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          },
+          {
+            "hat": "kuzey",
+            "devreye_girme": "17:15",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u2",
+        "kod": "ÜNİTE-2",
+        "durum": "duran",
+        "events": [
+          {
+            "hat": "kuzey",
+            "devreye_girme": "",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u3",
+        "kod": "ÜNİTE-3",
+        "durum": "calisiyor",
+        "events": [
+          {
+            "hat": "kuzey",
+            "devreye_girme": "",
+            "devreden_cikma": "16:30",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": "86/1"
+          },
+          {
+            "hat": "kuzey",
+            "devreye_girme": "18:00",
+            "devreden_cikma": "",
+            "ariza_baslama": "",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      },
+      {
+        "id": "u4",
+        "kod": "ÜNİTE-4",
+        "durum": "duran",
+        "events": [
+          {
+            "hat": "guney",
+            "devreye_girme": "",
+            "devreden_cikma": "",
+            "ariza_baslama": "16:15",
+            "ariza_bitis": "",
+            "izahat": ""
+          }
+        ],
+        "calisanKorumalar": "",
+        "dusenBayraklar": ""
+      }
+    ],
+    "tesis": "hasan",
+    "son_guncelleme": "2026-04-23T18:40:55.704Z"
+  }
+]

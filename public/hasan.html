@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hasan Uğurlu – Vardiya Kayıt Sistemi</title>
+  <meta name="description" content="Hasan Uğurlu HES Vardiya Kayıt Formu – Dr. Soner ASLAN" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body data-tesis="hasan">
+
+  <!-- ═══════ HEADER ═══════════════════════════════════════════ -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <a href="index.html"
+          style="color:var(--text-muted);font-size:1.2rem;text-decoration:none;transition:color 0.2s;"
+          title="Ana Sayfa">⬅</a>
+        <div class="header-brand">
+          <div class="header-title">Vardiya Kayıt Sistemi</div>
+          <div class="header-subtitle">Dr. Soner ASLAN</div>
+        </div>
+      </div>
+      <div class="header-tesis">
+        <span class="header-tesis-icon">🏭</span>
+        <span class="header-tesis-name">HASAN UĞURLU HES</span>
+        <span class="header-badge">4 Ünite</span>
+      </div>
+      <div class="header-clock">
+        <div id="current-date"></div>
+        <span id="current-time"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════ MAIN ══════════════════════════════════════════════ -->
+  <main class="main-container">
+
+    <!-- ── Genel Bilgiler ─────────────────────────────────────── -->
+    <div class="form-grid-top">
+
+      <!-- Tarih -->
+      <div class="card">
+        <div class="card-title"><span class="icon">📅</span> Tarih</div>
+        <div class="form-group">
+          <input type="date" id="tarih" name="tarih" />
+        </div>
+      </div>
+
+      <!-- Vardiya -->
+      <div class="card">
+        <div class="card-title"><span class="icon">⏰</span> Vardiya</div>
+        <div class="vardiya-selector">
+          <button class="vardiya-btn" data-vardiya="00-08">00–08</button>
+          <button class="vardiya-btn" data-vardiya="08-16">08–16</button>
+          <button class="vardiya-btn" data-vardiya="16-24">16–24</button>
+        </div>
+      </div>
+
+      <!-- Personel -->
+      <div class="card" style="grid-column: span 1;">
+        <div class="card-title">
+          <span class="icon">👤</span> Vardiya Amiri / Personel
+          <span class="grup-badge" id="personel-grup-badge" style="display:none"></span>
+        </div>
+        <div class="form-group personel-select-wrap">
+          <select id="personel" name="personel">
+            <option value="">Yükleniyor...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Göl Kotu -->
+      <div class="card">
+        <div class="card-title"><span class="icon">💧</span> Göl Kotu (m)</div>
+        <div class="form-group">
+          <input type="number" id="gol-kotu" name="golKotu" placeholder="Örn:180.40" step="0.01" min="150" max="190" />
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Ünite Kartları ─────────────────────────────────────── -->
+    <section class="uniteler-section">
+      <div class="uniteler-section-title">
+        <span>⚡</span> Ünite Durumları
+      </div>
+      <div class="uniteler-grid" id="uniteler-grid">
+
+        <!-- ÜNİTE 1 -->
+        <div class="unite-card calismiyor" data-unite-id="u1">
+          <div class="unite-header">
+            <span class="unite-num" id="u1-kod" data-kod="ÜNİTE-1">ÜNİTE-1</span>
+            <div class="unite-durum-toggle">
+              <span class="toggle-label">Duran</span>
+              <label class="toggle-switch">
+                <input type="checkbox" class="unite-toggle" id="u1-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Çalışıyor</span>
+              <span class="unite-durum-text durum-duran" id="u1-durum-txt">Duran</span>
+            </div>
+          </div>
+          <div class="unite-body" style="opacity:0.5">
+            <!-- Olaylar (Seanslar) Kapsayıcısı -->
+            <div class="events-container" id="u1-events-container">
+              <div class="event-row">
+                <div class="event-row-header">
+                  <span class="event-num-label">Seans 1</span>
+                </div>
+                <!-- Hat -->
+                <div class="form-group">
+                  <label>Hat</label>
+                  <div class="hat-selector">
+                    <button class="hat-btn" data-hat="kuzey">🔼 Kuzey</button>
+                    <button class="hat-btn" data-hat="guney">🔽 Güney</button>
+                  </div>
+                </div>
+                <!-- Saatler -->
+                <div class="saat-grid">
+                  <div class="saat-field">
+                    <label>Devreye Girme</label>
+                    <input type="time" class="u-devreye" />
+                  </div>
+                  <div class="saat-field">
+                    <label>Devreden Çıkma</label>
+                    <input type="time" class="u-cikma" />
+                  </div>
+                  <div class="saat-field ariza-baslama">
+                    <label>🔴 Arıza Başlama</label>
+                    <input type="time" class="u-ariza-baslama" />
+                  </div>
+                  <div class="saat-field ariza-bitis">
+                    <label>🟡 Arızanın Bitişi</label>
+                    <input type="time" class="u-ariza-bitis" />
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                  <textarea class="u-izahat" placeholder="Seans/Arıza notu..." rows="1" style="font-size:0.85rem; height:40px;"></textarea>
+                </div>
+              </div>
+            </div>
+            
+            <button class="add-event-btn" onclick="yeniSeansEkle('u1')">
+              <span>➕</span> Yeni Seans (İşlem) Ekle
+            </button>
+
+            <!-- Korumalar & Bayraklar (Ünite Bazlı Genel) -->
+            <div class="form-row" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+              <div class="form-group koruma-input">
+                <label>Çalışan Korumalar</label>
+                <input type="text" id="u1-korumalar" placeholder="Koruma adları..." />
+              </div>
+              <div class="form-group bayrak-input">
+                <label>Düşen Bayraklar</label>
+                <input type="text" id="u1-bayraklar" placeholder="Bayrak adları..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÜNİTE 2 -->
+        <div class="unite-card calismiyor" data-unite-id="u2">
+          <div class="unite-header">
+            <span class="unite-num" id="u2-kod" data-kod="ÜNİTE-2">ÜNİTE-2</span>
+            <div class="unite-durum-toggle">
+              <span class="toggle-label">Duran</span>
+              <label class="toggle-switch">
+                <input type="checkbox" class="unite-toggle" id="u2-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Çalışıyor</span>
+              <span class="unite-durum-text durum-duran" id="u2-durum-txt">Duran</span>
+            </div>
+          </div>
+          <div class="unite-body" style="opacity:0.5">
+            <div class="events-container" id="u2-events-container">
+              <div class="event-row">
+                <div class="event-row-header">
+                  <span class="event-num-label">Seans 1</span>
+                </div>
+                <div class="form-group">
+                  <label>Hat</label>
+                  <div class="hat-selector">
+                    <button class="hat-btn" data-hat="kuzey">🔼 Kuzey</button>
+                    <button class="hat-btn" data-hat="guney">🔽 Güney</button>
+                  </div>
+                </div>
+                <div class="saat-grid">
+                  <div class="saat-field">
+                    <label>Devreye Girme</label>
+                    <input type="time" class="u-devreye" />
+                  </div>
+                  <div class="saat-field">
+                    <label>Devreden Çıkma</label>
+                    <input type="time" class="u-cikma" />
+                  </div>
+                  <div class="saat-field ariza-baslama">
+                    <label>🔴 Arıza Başlama</label>
+                    <input type="time" class="u-ariza-baslama" />
+                  </div>
+                  <div class="saat-field ariza-bitis">
+                    <label>🟡 Arızanın Bitişi</label>
+                    <input type="time" class="u-ariza-bitis" />
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                  <textarea class="u-izahat" placeholder="Seans/Arıza notu..." rows="1" style="font-size:0.85rem; height:40px;"></textarea>
+                </div>
+              </div>
+            </div>
+            <button class="add-event-btn" onclick="yeniSeansEkle('u2')">
+              <span>➕</span> Yeni Seans (İşlem) Ekle
+            </button>
+            <div class="form-row" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+              <div class="form-group koruma-input">
+                <label>Çalışan Korumalar</label>
+                <input type="text" id="u2-korumalar" placeholder="Koruma adları..." />
+              </div>
+              <div class="form-group bayrak-input">
+                <label>Düşen Bayraklar</label>
+                <input type="text" id="u2-bayraklar" placeholder="Bayrak adları..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÜNİTE 3 -->
+        <div class="unite-card calismiyor" data-unite-id="u3">
+          <div class="unite-header">
+            <span class="unite-num" id="u3-kod" data-kod="ÜNİTE-3">ÜNİTE-3</span>
+            <div class="unite-durum-toggle">
+              <span class="toggle-label">Duran</span>
+              <label class="toggle-switch">
+                <input type="checkbox" class="unite-toggle" id="u3-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Çalışıyor</span>
+              <span class="unite-durum-text durum-duran" id="u3-durum-txt">Duran</span>
+            </div>
+          </div>
+          <div class="unite-body" style="opacity:0.5">
+            <div class="events-container" id="u3-events-container">
+              <div class="event-row">
+                <div class="event-row-header">
+                  <span class="event-num-label">Seans 1</span>
+                </div>
+                <div class="form-group">
+                  <label>Hat</label>
+                  <div class="hat-selector">
+                    <button class="hat-btn" data-hat="kuzey">🔼 Kuzey</button>
+                    <button class="hat-btn" data-hat="guney">🔽 Güney</button>
+                  </div>
+                </div>
+                <div class="saat-grid">
+                  <div class="saat-field">
+                    <label>Devreye Girme</label>
+                    <input type="time" class="u-devreye" />
+                  </div>
+                  <div class="saat-field">
+                    <label>Devreden Çıkma</label>
+                    <input type="time" class="u-cikma" />
+                  </div>
+                  <div class="saat-field ariza-baslama">
+                    <label>🔴 Arıza Başlama</label>
+                    <input type="time" class="u-ariza-baslama" />
+                  </div>
+                  <div class="saat-field ariza-bitis">
+                    <label>🟡 Arızanın Bitişi</label>
+                    <input type="time" class="u-ariza-bitis" />
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:10px;">
+                  <textarea class="u-izahat" placeholder="Seans/Arıza notu..." rows="1" style="font-size:0.85rem; height:40px;"></textarea>
+                </div>
+              </div>
+            </div>
+            <button class="add-event-btn" onclick="yeniSeansEkle('u3')">
+              <span>➕</span> Yeni Seans (İşlem) Ekle
+            </button>
+            <div class="form-row" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+              <div class="form-group koruma-input">
+                <label>Çalışan Korumalar</label>
+                <input type="text" id="u3-korumalar" placeholder="Koruma adları..." />
+              </div>
+              <div class="form-group bayrak-input">
+                <label>Düşen Bayraklar</label>
+                <input type="text" id="u3-bayraklar" placeholder="Bayrak adları..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ÜNİTE 4 -->
+        <div class="unite-card calismiyor" data-unite-id="u4">
+          <div class="unite-header">
+            <span class="unite-num" id="u4-kod" data-kod="ÜNİTE-4">ÜNİTE-4</span>
+            <div class="unite-durum-toggle">
+              <span class="toggle-label">Duran</span>
+              <label class="toggle-switch">
+                <input type="checkbox" class="unite-toggle" id="u4-toggle" />
+                <span class="toggle-slider"></span>
+              </label>
+              <span class="toggle-label">Çalışıyor</span>
+              <span class="unite-durum-text durum-duran" id="u4-durum-txt">Duran</span>
+            </div>
+          </div>
+          <div class="unite-body" style="opacity:0.5">
+            <div class="events-container" id="u4-events-container">
+              <div class="event-row">
+                <div class="event-row-header">
+                  <span class="event-num-label">Seans 1</span>
+                </div>
+                <div class="form-group">
+                  <label>Hat</label>
+                  <div class="hat-selector">
+                    <button class="hat-btn" data-hat="kuzey">🔼 Kuzey</button>
+                    <button class="hat-btn" data-hat="guney">🔽 Güney</button>
+                  </div>
+                </div>
+                <div class="saat-grid">
+                  <div class="saat-field">
+                    <label>Devreye Girme</label>
+                    <input type="time" class="u-devreye" />
+                  </div>
+                  <div class="saat-field">
+                    <label>Devreden Çıkma</label>
+                    <input type="time" class="u-cikma" />
+                  </div>
+                  <div class="saat-field ariza-baslama">
+                    <label>🔴 Arıza Başlama</label>
+                    <input type="time" class="u-ariza-baslama" />
+                  </div>
+                  <div class="saat-field ariza-bitis">
+                    <label>🟡 Arızanın Bitişi</label>
+                    <input type="time" class="u-ariza-bitis" />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <button class="add-event-btn" onclick="yeniSeansEkle('u4')">
+              <span>➕</span> Yeni Seans (İşlem) Ekle
+            </button>
+            <div class="form-row" style="margin-top:16px; border-top:1px solid var(--border); padding-top:16px;">
+              <div class="form-group koruma-input">
+                <label>Çalışan Korumalar</label>
+                <input type="text" id="u4-korumalar" placeholder="Koruma adları..." />
+              </div>
+              <div class="form-group bayrak-input">
+                <label>Düşen Bayraklar</label>
+                <input type="text" id="u4-bayraklar" placeholder="Bayrak adları..." />
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /uniteler-grid -->
+    </section>
+
+
+    <!-- İzahatlar artık ünite satırlarının içinde -->
+
+    <!-- ── Vardiya Kayıt Tablosu ────────────────────────────── -->
+    <section class="table-section">
+      <div class="uniteler-section-title">
+        <span>📊</span> Vardiya Kayıt Tablosu (Son Kayıtlar)
+      </div>
+      <div class="table-container">
+        <table class="data-table" id="kayit-tablosu">
+          <thead>
+            <tr>
+              <th rowspan="2">TARİH</th>
+              <th rowspan="2">Vardiya</th>
+              <th rowspan="2">Teslim Alan</th>
+              <th rowspan="2">Göl Kodu</th>
+              <th rowspan="2">Duranlar</th>
+              <th rowspan="2">Çalışanlar</th>
+
+              <th colspan="5" style="text-align:center; background:#1e3a5f;">ÜNİTE - 1 (G1)</th>
+              <th colspan="5" style="text-align:center; background:#162d4e;">ÜNİTE - 2 (G2)</th>
+              <th colspan="5" style="text-align:center; background:#1e3a5f;">ÜNİTE - 3 (G3)</th>
+              <th colspan="5" style="text-align:center; background:#162d4e;">ÜNİTE - 4 (G4)</th>
+              <th rowspan="2">İZAHAT</th>
+              <th rowspan="2">İŞLEM</th>
+            </tr>
+            <tr>
+              <!-- G1 -->
+              <th>Hat</th>
+              <th>Devreye</th>
+              <th>Çıkma</th>
+              <th>Arıza B.</th>
+              <th>Arıza S.</th>
+              <!-- G2 -->
+              <th>Hat</th>
+              <th>Devreye</th>
+              <th>Çıkma</th>
+              <th>Arıza B.</th>
+              <th>Arıza S.</th>
+              <!-- G3 -->
+              <th>Hat</th>
+              <th>Devreye</th>
+              <th>Çıkma</th>
+              <th>Arıza B.</th>
+              <th>Arıza S.</th>
+              <!-- G4 -->
+              <th>Hat</th>
+              <th>Devreye</th>
+              <th>Çıkma</th>
+              <th>Arıza B.</th>
+              <th>Arıza S.</th>
+            </tr>
+          </thead>
+          <tbody id="kayit-tablosu-body">
+            <!-- Veriler JS ile buraya dolacak -->
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Form Aksiyonları (Temizle duruyor, Kaydet kalktı) ─── -->
+    <div class="form-actions">
+      <button class="btn btn-secondary" onclick="formuTemizle()" id="btn-temizle">
+        🗑️ Formu Temizle
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Otomatik Kaydet Göstergesi -->
+  <div id="autosave-status" class="autosave-status">
+    <div class="dot"></div>
+    <span id="autosave-text">Kaydedildi</span>
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script src="js/form.js"></script>
+  <script src="js/personnel.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/data.js"></script>
+  <script>
+    // Personel listesini yükle
+    personelYukle('personel');
+
+    // Tabloyu ilk açılışta yükle
+    tabloyuGuncelle();
+
+    // Otomatik kayıt mekanizmasını başlat
+    autoSaveBaslat();
+
+    // Bildirim tetikleyiciyi izahat alanına bağla
+    izahatDinle('Hasan Uğurlu HES');
+
+    // Toggle'lar ile ünite body opacity kontrolü
+    document.querySelectorAll('.unite-toggle').forEach(toggle => {
+      toggle.addEventListener('change', () => {
+        const kart = toggle.closest('.unite-card');
+        const body = kart.querySelector('.unite-body');
+        if (body) body.style.opacity = toggle.checked ? '1' : '0.5';
+      });
+    });
+  </script>
+</body>
+
+</html>

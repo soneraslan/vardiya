@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Suat Uğurlu – Vardiya Kayıt Sistemi</title>
+  <meta name="description" content="Suat Uğurlu HES Vardiya Kayıt Formu – Dr. Soner ASLAN"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .coming-soon-wrap {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 60vh; text-align: center;
+      padding: 40px;
+    }
+    .coming-soon-icon { font-size: 4rem; margin-bottom: 20px; animation: float 3s ease-in-out infinite; }
+    @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+    .coming-soon-title {
+      font-size: 1.8rem; font-weight: 700; margin-bottom: 10px;
+      background: linear-gradient(135deg, #fff 0%, var(--accent) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .coming-soon-desc { color: var(--text-secondary); max-width: 420px; line-height: 1.7; }
+    .progress-bar-wrap { width: 300px; height: 6px; background: var(--border); border-radius: 3px; margin: 28px 0 8px; overflow: hidden; }
+    .progress-bar { height: 100%; width: 35%; background: linear-gradient(90deg, var(--accent-dim), var(--accent)); border-radius: 3px; animation: progressAnim 2s ease-in-out infinite alternate; }
+    @keyframes progressAnim { from{width:25%} to{width:45%} }
+    .progress-label { font-size: 0.75rem; color: var(--text-muted); }
+  </style>
+</head>
+<body data-tesis="suat">
+
+<header class="site-header">
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <a href="index.html" style="color:var(--text-muted);font-size:1.2rem;text-decoration:none;" title="Ana Sayfa">⬅</a>
+      <div class="header-brand">
+        <div class="header-title">Vardiya Kayıt Sistemi</div>
+        <div class="header-subtitle">Dr. Soner ASLAN</div>
+      </div>
+    </div>
+    <div class="header-tesis">
+      <span class="header-tesis-icon">🏗️</span>
+      <span class="header-tesis-name">SUAT UĞURLU HES</span>
+      <span class="header-badge" style="background:var(--text-muted)">3 Ünite</span>
+    </div>
+    <div class="header-clock">
+      <div id="current-date"></div>
+      <span id="current-time"></span>
+    </div>
+  </div>
+</header>
+
+<main class="main-container">
+  <div class="coming-soon-wrap">
+    <div class="coming-soon-icon">🏗️</div>
+    <h1 class="coming-soon-title">Suat Uğurlu HES</h1>
+    <p class="coming-soon-desc">
+      Bu sayfa geliştirme aşamasındadır. Suat Uğurlu HES vardiya kayıt formu
+      yakında aktif edilecektir. 3 ünite desteğiyle, Hasan Uğurlu formuyla
+      aynı özelliklere sahip olacak.
+    </p>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar"></div>
+    </div>
+    <div class="progress-label">Geliştirme devam ediyor...</div>
+    <br/>
+    <a href="index.html" class="btn btn-secondary" style="margin-top:16px;">⬅ Ana Sayfaya Dön</a>
+  </div>
+</main>
+
+<div id="toast-container" class="toast-container"></div>
+<script src="js/form.js"></script>
+</body>
+</html>
