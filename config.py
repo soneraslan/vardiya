@@ -365,12 +365,14 @@ DEFAULTS = {
     "openai_base_url": "https://api.openai.com/v1",
     "openrouter_api_key": "",
     "openrouter_base_url": "https://openrouter.ai/api/v1",
+    "ollama_base_url": "http://localhost:11434/v1",
     "transcribe_provider": "openai",  # openai | openrouter
     "transcribe_model": "gpt-4o-transcribe",           # used when provider is openai
     "openrouter_transcribe_model": "openai/gpt-4o-transcribe",
     "language": "tr",
     "transcribe_prompt": "",
     "cleanup_enabled": True,
+    "cleanup_provider": "openrouter",  # openrouter | ollama
     "cleanup_model": "google/gemini-3.5-flash-lite",
     "cleanup_reasoning": "",        # empty -> whatever the model does by default
     "cleanup_prompt": "",           # empty -> language-specific default
@@ -400,6 +402,7 @@ DEFAULTS = {
     "meeting_language": "",         # empty -> the dictation speech language
     "meeting_max_seconds": 14400,   # 4 hours
     "meeting_cleanup": True,
+    "meeting_provider": "openrouter",  # openrouter | ollama
     "meeting_model": "google/gemini-3.5-flash",
     "meeting_reasoning": "",
     "meeting_prompt": "",           # empty -> language-specific default
@@ -411,12 +414,13 @@ DEFAULTS = {
 
     # --- speaking a command to an agent -------------------------------------
     "assistant_shortcut": "",       # empty -> tray only
-    "assistant_provider": "claude",  # claude | codex | openrouter
+    "assistant_provider": "claude",  # claude | codex | openrouter | ollama
     "assistant_model": "sonnet",    # Claude Code: an alias, or a full model id
     "assistant_permission_mode": "auto",
     "assistant_codex_model": "",    # empty -> whatever Codex is set to
     "assistant_codex_sandbox": "workspace-write",
     "assistant_openrouter_model": "google/gemini-3.5-flash",
+    "assistant_ollama_model": "llama3.1",
     "assistant_reasoning": "",      # empty -> the model's own default
     "assistant_dir": "",            # empty -> the home directory
     "assistant_prompt": "",         # empty -> language-specific default
@@ -502,6 +506,17 @@ class Config:
                               self["openrouter_transcribe_model"])
         return api.Target("openai", "OpenAI", self.openai_key(),
                           self["openai_base_url"], self["transcribe_model"])
+
+    def llm_target(self, job):
+        """Chat-completions target for cleanup, minutes or plain assistant use."""
+        provider = self[f"{job}_provider"] if job != "assistant" else self["assistant_provider"]
+        if provider == "ollama":
+            model_key = "assistant_ollama_model" if job == "assistant" else f"{job}_model"
+            return api.Target("ollama", "Ollama", "", self["ollama_base_url"],
+                              self[model_key])
+        model_key = "assistant_openrouter_model" if job == "assistant" else f"{job}_model"
+        return api.Target("openrouter", "OpenRouter", self.openrouter_key(),
+                          self["openrouter_base_url"], self[model_key])
 
     def cleanup_prompt(self, with_timestamps=False, with_speakers=False,
                        subtitles=False):

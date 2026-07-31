@@ -30,6 +30,7 @@ LANGUAGES = [
 ]
 CORNERS = ["bottom-left", "bottom-right", "top-left", "top-right"]
 TRANSCRIBE_PROVIDERS = [("OpenAI", "openai"), ("OpenRouter", "openrouter")]
+CHAT_PROVIDERS = [("OpenRouter", "openrouter"), ("Ollama", "ollama")]
 # Starting points for the model box; "Fetch model list" replaces them with
 # whatever the provider offers today.
 TRANSCRIBE_MODELS = {
@@ -46,6 +47,7 @@ CLEANUP_MODELS = [
     "google/gemini-2.5-flash-lite", "anthropic/claude-haiku-4.5",
     "openai/gpt-5-mini", "meta-llama/llama-3.3-70b-instruct",
 ]
+OLLAMA_MODELS = ["llama3.1", "qwen2.5", "mistral", "gemma2"]
 # Minutes are a harder job than cleanup: an hour of talk has to be read whole
 # and turned into decisions, so the starting points are the larger models.
 MEETING_MODELS = [
@@ -54,6 +56,7 @@ MEETING_MODELS = [
 ]
 ASSISTANT_PROVIDERS = [
     ("Claude Code", "claude"), ("Codex", "codex"), ("OpenRouter", "openrouter"),
+    ("Ollama", "ollama"),
 ]
 # Aliases resolve to the newest model of that name, so they age better than an
 # id does; a full id can be typed in when a particular one is wanted.
@@ -263,6 +266,10 @@ class SettingsWindow(QDialog):
         self.or_test_label.setWordWrap(True)
         keys_form.addRow("OpenRouter", self._row(self.openrouter_key, self.or_test_button))
         keys_form.addRow("", self.or_test_label)
+
+        self.ollama_base_url = QLineEdit()
+        self.ollama_base_url.setPlaceholderText("http://localhost:11434/v1")
+        keys_form.addRow("Ollama", self.ollama_base_url)
         outer.addWidget(keys)
 
         stt = QGroupBox(t("Speech to text"))
@@ -291,9 +298,16 @@ class SettingsWindow(QDialog):
         self.cleanup_enabled = QCheckBox(t("Clean the transcript with a model"))
         orr_form.addRow("", self.cleanup_enabled)
 
+        self.cleanup_provider = QComboBox()
+        for label, value in CHAT_PROVIDERS:
+            self.cleanup_provider.addItem(label, value)
+        self.cleanup_provider.currentIndexChanged.connect(self._chat_provider_changed)
+        orr_form.addRow(t("Provider"), self.cleanup_provider)
+
         self.cleanup_model = QComboBox()
         self.cleanup_model.setEditable(True)
         self.cleanup_model.addItems(CLEANUP_MODELS)
+        self.cleanup_model.addItems(OLLAMA_MODELS)
         self.refresh_models = QPushButton(t("Fetch model list"))
         self.refresh_models.clicked.connect(self._load_models)
         orr_form.addRow(t("Model"), self._row(self.cleanup_model, self.refresh_models))
@@ -308,7 +322,7 @@ class SettingsWindow(QDialog):
         )
         orr_form.addRow(t("Thinking"), self.cleanup_reasoning)
 
-        self.models_label = QLabel(t("Runs on OpenRouter."))
+        self.models_label = QLabel(t("Runs on OpenRouter or local Ollama."))
         self.models_label.setWordWrap(True)
         orr_form.addRow(self.models_label)
         outer.addWidget(orr)
@@ -473,6 +487,20 @@ class SettingsWindow(QDialog):
         or_form.addRow(or_note)
         layout.addWidget(self.openrouter_box)
 
+        self.ollama_box = QGroupBox("Ollama")
+        ollama_form = QFormLayout(self.ollama_box)
+        self.assistant_ollama_model = QComboBox()
+        self.assistant_ollama_model.setEditable(True)
+        self.assistant_ollama_model.addItems(OLLAMA_MODELS)
+        ollama_form.addRow(t("Model"), self.assistant_ollama_model)
+        ollama_note = QLabel(t(
+            "A local plain question and answer through Ollama. It runs no "
+            "commands, opens no files and needs no API key."
+        ))
+        ollama_note.setWordWrap(True)
+        ollama_form.addRow(ollama_note)
+        layout.addWidget(self.ollama_box)
+
         thread = QGroupBox(t("The conversation"))
         thread_form = QFormLayout(thread)
         self.assistant_session_minutes = QSpinBox()
@@ -589,9 +617,15 @@ class SettingsWindow(QDialog):
 
         models = QGroupBox(t("Minutes"))
         models_form = QFormLayout(models)
+        self.meeting_provider = QComboBox()
+        for label, value in CHAT_PROVIDERS:
+            self.meeting_provider.addItem(label, value)
+        self.meeting_provider.currentIndexChanged.connect(self._chat_provider_changed)
+        models_form.addRow(t("Provider"), self.meeting_provider)
         self.meeting_model = QComboBox()
         self.meeting_model.setEditable(True)
         self.meeting_model.addItems(MEETING_MODELS)
+        self.meeting_model.addItems(OLLAMA_MODELS)
         models_form.addRow(t("Model"), self.meeting_model)
         self.meeting_reasoning = QComboBox()
         for label, value in REASONING_LEVELS:
@@ -921,12 +955,14 @@ class SettingsWindow(QDialog):
 
         self.openai_key.setText(conf["openai_api_key"])
         self.openrouter_key.setText(conf["openrouter_api_key"])
+        self.ollama_base_url.setText(conf["ollama_base_url"])
         self._models = {"openai": conf["transcribe_model"],
                         "openrouter": conf["openrouter_transcribe_model"]}
         self._shown_provider = ""
         self._select_data(self.transcribe_provider, conf["transcribe_provider"])
         self._provider_changed()  # selecting index 0 fires no signal
         self.cleanup_enabled.setChecked(conf["cleanup_enabled"])
+        self._select_data(self.cleanup_provider, conf["cleanup_provider"])
         self.cleanup_model.setCurrentText(conf["cleanup_model"])
         self._select_data(self.cleanup_reasoning, conf["cleanup_reasoning"])
         self.cleanup_prompt.setPlainText(conf["cleanup_prompt"] or cfg.default_cleanup_prompt())
@@ -942,6 +978,7 @@ class SettingsWindow(QDialog):
         self.assistant_codex_model.setCurrentText(conf["assistant_codex_model"])
         self._select_data(self.assistant_codex_sandbox, conf["assistant_codex_sandbox"])
         self.assistant_openrouter_model.setCurrentText(conf["assistant_openrouter_model"])
+        self.assistant_ollama_model.setCurrentText(conf["assistant_ollama_model"])
         self._assistant_provider_changed()  # selecting index 0 fires no signal
         self._select_data(self.assistant_reasoning, conf["assistant_reasoning"])
         self.assistant_dir.setText(conf["assistant_dir"])
@@ -958,6 +995,7 @@ class SettingsWindow(QDialog):
         self.meeting_self_name.setText(conf["meeting_self_name"])
         self.meeting_other_name.setText(conf["meeting_other_name"])
         self.meeting_participants.setPlainText(conf["meeting_participants"])
+        self._select_data(self.meeting_provider, conf["meeting_provider"])
         self.meeting_model.setCurrentText(conf["meeting_model"])
         self._select_data(self.meeting_reasoning, conf["meeting_reasoning"])
         self._select_data(self.meeting_language, conf["meeting_language"])
@@ -981,6 +1019,7 @@ class SettingsWindow(QDialog):
         self._refresh_shortcut_status()
         self._refresh_meeting_shortcut_status()
         self._refresh_ask_shortcut_status()
+        self._chat_provider_changed()
         self._refresh_assistant_status()
         self._load_history()
         self._load_minutes()
@@ -1002,6 +1041,8 @@ class SettingsWindow(QDialog):
 
         conf["openai_api_key"] = self.openai_key.text().strip()
         conf["openrouter_api_key"] = self.openrouter_key.text().strip()
+        conf["ollama_base_url"] = (self.ollama_base_url.text().strip()
+                                   or cfg.DEFAULTS["ollama_base_url"])
 
         provider = self.transcribe_provider.currentData() or "openai"
         self._models[provider] = self.transcribe_model.currentText().strip()
@@ -1011,6 +1052,7 @@ class SettingsWindow(QDialog):
             conf[name] = self._models[key].strip() or cfg.DEFAULTS[name]
 
         conf["cleanup_enabled"] = self.cleanup_enabled.isChecked()
+        conf["cleanup_provider"] = self.cleanup_provider.currentData() or "openrouter"
         conf["cleanup_model"] = self.cleanup_model.currentText().strip()
         conf["cleanup_reasoning"] = self.cleanup_reasoning.currentData() or ""
 
@@ -1041,6 +1083,10 @@ class SettingsWindow(QDialog):
             self.assistant_openrouter_model.currentText().strip()
             or cfg.DEFAULTS["assistant_openrouter_model"]
         )
+        conf["assistant_ollama_model"] = (
+            self.assistant_ollama_model.currentText().strip()
+            or cfg.DEFAULTS["assistant_ollama_model"]
+        )
         conf["assistant_reasoning"] = self.assistant_reasoning.currentData() or ""
         conf["assistant_dir"] = self.assistant_dir.text().strip()
         conf["assistant_timeout"] = self.assistant_timeout.value()
@@ -1056,6 +1102,7 @@ class SettingsWindow(QDialog):
         conf["meeting_self_name"] = self.meeting_self_name.text().strip()
         conf["meeting_other_name"] = self.meeting_other_name.text().strip()
         conf["meeting_participants"] = self.meeting_participants.toPlainText().strip()
+        conf["meeting_provider"] = self.meeting_provider.currentData() or "openrouter"
         conf["meeting_model"] = (self.meeting_model.currentText().strip()
                                  or cfg.DEFAULTS["meeting_model"])
         conf["meeting_reasoning"] = self.meeting_reasoning.currentData() or ""
@@ -1136,11 +1183,21 @@ class SettingsWindow(QDialog):
     def _load_models(self):
         self.refresh_models.setEnabled(False)
         self.models_label.setText(t("Fetching model list…"))
-        key = self.openrouter_key.text().strip() or self.conf.openrouter_key()
+        providers = {
+            self.cleanup_provider.currentData() or "openrouter",
+            self.meeting_provider.currentData() or "openrouter",
+        }
+        openrouter_key = self.openrouter_key.text().strip() or self.conf.openrouter_key()
+        ollama_base = self.ollama_base_url.text().strip() or self.conf["ollama_base_url"]
 
         def work():
             try:
-                self._models_loaded.emit(api.openrouter_models(key), "")
+                models = []
+                if "openrouter" in providers:
+                    models.extend(api.openrouter_models(openrouter_key))
+                if "ollama" in providers:
+                    models.extend(api.ollama_models(ollama_base))
+                self._models_loaded.emit(sorted(dict.fromkeys(models)), "")
             except api.ApiError as exc:
                 self._models_loaded.emit([], str(exc))
 
@@ -1157,6 +1214,17 @@ class SettingsWindow(QDialog):
             combo.addItems(models)
             combo.setCurrentText(current)
         self.models_label.setText(t("{count} models loaded.", count=len(models)))
+
+    def _chat_provider_changed(self):
+        cleanup_provider = self.cleanup_provider.currentData() or "openrouter"
+        meeting_provider = self.meeting_provider.currentData() or "openrouter"
+        self.cleanup_reasoning.setEnabled(cleanup_provider == "openrouter")
+        self.meeting_reasoning.setEnabled(meeting_provider == "openrouter")
+        self.models_label.setText(
+            t("Runs on Ollama locally; no API key needed.")
+            if cleanup_provider == "ollama"
+            else t("Runs on OpenRouter or local Ollama.")
+        )
 
     def _test_openai(self):
         self.test_button.setEnabled(False)
@@ -1386,6 +1454,7 @@ class SettingsWindow(QDialog):
         self.claude_box.setVisible(provider == "claude")
         self.codex_box.setVisible(provider == "codex")
         self.openrouter_box.setVisible(provider == "openrouter")
+        self.ollama_box.setVisible(provider == "ollama")
         self._refresh_assistant_status()
 
     def _refresh_assistant_status(self):
@@ -1394,7 +1463,9 @@ class SettingsWindow(QDialog):
         found = shutil.which(binary) if binary else ""
         if not binary:
             self.assistant_found.setText(
-                t("Needs no program installed, only the OpenRouter key.")
+                t("Needs no program installed, only local Ollama.")
+                if provider == "ollama"
+                else t("Needs no program installed, only the OpenRouter key.")
             )
         elif found:
             self.assistant_found.setText(t("Found: {path}", path=found))

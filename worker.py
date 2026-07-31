@@ -108,13 +108,16 @@ class Pipeline(QObject):
             if (conf["assistant_cleanup"] if ask else conf["cleanup_enabled"]):
                 self.stage.emit(t("Cleaning up…"))
                 try:
+                    cleanup_target = conf.llm_target("cleanup")
                     text = api.cleanup(
                         raw,
-                        conf.openrouter_key(),
-                        conf["cleanup_model"],
+                        cleanup_target.api_key,
+                        cleanup_target.model,
                         conf.cleanup_prompt(),
                         reasoning=conf["cleanup_reasoning"],
-                        base_url=conf["openrouter_base_url"],
+                        base_url=cleanup_target.base_url,
+                        provider=cleanup_target.provider,
+                        service=cleanup_target.service,
                     )
                 except api.ApiError as exc:
                     # Keep the transcript, but never let the failure pass unseen:

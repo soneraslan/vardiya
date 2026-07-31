@@ -5,6 +5,7 @@ Three of them, because not everyone has the same one installed:
   Claude Code   `claude -p`, the session you would have opened yourself
   Codex         `codex exec`, the same idea from the other shop
   OpenRouter    a plain chat request, over the key that is already configured
+  Ollama        the same plain chat request, against a local model
 
 The first two are the whole machine: they run commands, read files, and reach
 whatever skills and services you have connected, which is what makes "put that
@@ -34,7 +35,7 @@ import config as cfg
 from i18n import t
 
 SESSION_FILE = cfg.DATA_DIR / "assistant.json"
-PROVIDERS = ("claude", "codex", "openrouter")
+PROVIDERS = ("claude", "codex", "openrouter", "ollama")
 
 # How many messages of an OpenRouter conversation are carried forward. The two
 # CLIs keep their own history and need no such number; here every turn is resent
@@ -100,7 +101,9 @@ def executable(name):
 
 def display_name(conf):
     """What to call the thing being asked, in the tray and in the corner."""
-    return {"claude": "Claude", "codex": "Codex"}.get(provider(conf), "OpenRouter")
+    return {"claude": "Claude", "codex": "Codex", "ollama": "Ollama"}.get(
+        provider(conf), "OpenRouter"
+    )
 
 
 # --- the conversation -----------------------------------------------------
@@ -183,8 +186,8 @@ def ask(prompt, conf, on_stage=None, should_stop=None):
     one, and only the denial explains why it did not do what it was asked to.
     """
     name = provider(conf)
-    if name == "openrouter":
-        return _ask_openrouter(prompt, conf, on_stage)
+    if name in ("openrouter", "ollama"):
+        return _ask_chat(prompt, conf, on_stage)
 
     binary = executable(name)
     if not shutil.which(binary):
@@ -325,9 +328,9 @@ def _codex_label(item):
     return t("Using {name}…", name=item_type or "a tool")
 
 
-# --- OpenRouter -----------------------------------------------------------
+# --- OpenRouter / Ollama --------------------------------------------------
 
-def _ask_openrouter(prompt, conf, on_stage):
+def _ask_chat(prompt, conf, on_stage):
     """No tools, no files, no calendar: a question and an answer.
 
     It is the fallback for a machine with neither CLI on it, so it says what it
@@ -336,18 +339,21 @@ def _ask_openrouter(prompt, conf, on_stage):
     """
     if on_stage:
         on_stage(t("Thinking…"))
-    history = read_messages("openrouter", conf["assistant_session_minutes"] * 60)
+    target = conf.llm_target("assistant")
+    history = read_messages(target.provider, conf["assistant_session_minutes"] * 60)
     messages = history + [{"role": "user", "content": prompt}]
     try:
         answer = api.chat(
-            messages, conf.openrouter_key(), conf["assistant_openrouter_model"],
+            messages, target.api_key, target.model,
             conf.assistant_prompt(), reasoning=conf["assistant_reasoning"],
-            base_url=conf["openrouter_base_url"],
+            base_url=target.base_url,
+            provider=target.provider,
+            service=target.service,
             timeout=conf["assistant_timeout"],
         )
     except api.ApiError as exc:
         raise AssistantError(str(exc)) from exc
-    write_session("openrouter",
+    write_session(target.provider,
                   messages=messages + [{"role": "assistant", "content": answer}])
     return answer, ""
 

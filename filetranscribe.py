@@ -127,16 +127,19 @@ class FileTranscriber(QObject):
     def _cleanup(self, text, timestamps):
         conf = self.conf
         prompt = conf.cleanup_prompt(with_timestamps=timestamps, subtitles=True)
+        target = conf.llm_target("cleanup")
         out = []
         for block in split_text(text, timestamps):
             self._check()
             out.append(api.cleanup(
                 block,
-                conf.openrouter_key(),
-                conf["cleanup_model"],
+                target.api_key,
+                target.model,
                 prompt,
                 reasoning=conf["cleanup_reasoning"],
-                base_url=conf["openrouter_base_url"],
+                base_url=target.base_url,
+                provider=target.provider,
+                service=target.service,
             ))
         return ("\n" if timestamps else "\n\n").join(out)
 

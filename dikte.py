@@ -39,8 +39,8 @@ from meeting import MeetingPipeline  # noqa: E402
 from overlay import Overlay  # noqa: E402
 from settings_ui import SettingsWindow  # noqa: E402
 from worker import Pipeline  # noqa: E402
-
-SERVER_NAME = "dikte-" + str(os.getuid())
+# Windows uyumluluğu için os.getuid() yerine os.getpid() kullanıyoruz
+SERVER_NAME = "dikte-" + str(getattr(os, 'getuid', os.getpid)())
 IDLE, RECORDING, BUSY = "idle", "recording", "busy"
 # Dictation and a command for the agent are two runs of the same machinery, kept
 # apart so that neither waits on the other: an agent can spend a minute thinking,

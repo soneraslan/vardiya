@@ -105,8 +105,10 @@ def _multipart(fields, file_field, file_path):
     return bytes(out), f"multipart/form-data; boundary={boundary}"
 
 
-def _headers(provider, api_key, content_type=None):
-    headers = {"Authorization": f"Bearer {api_key}", "User-Agent": USER_AGENT}
+def _headers(provider, api_key="", content_type=None):
+    headers = {"User-Agent": USER_AGENT}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     if content_type:
         headers["Content-Type"] = content_type
     if provider == "openrouter":
@@ -174,10 +176,11 @@ def transcribe_segments(target, wav_path, language="", prompt="", timeout=300):
 
 
 def cleanup(text, api_key, model, system_prompt, reasoning="",
-            base_url=OPENROUTER_URL, timeout=180):
-    if not api_key:
+            base_url=OPENROUTER_URL, timeout=180, provider="openrouter",
+            service="OpenRouter"):
+    if provider != "ollama" and not api_key:
         raise ApiError(t("{service} API key is empty. Add it in Settings.",
-                         service="OpenRouter"))
+                         service=service))
     payload = {
         "model": model,
         "temperature": 0,
@@ -189,17 +192,17 @@ def cleanup(text, api_key, model, system_prompt, reasoning="",
     # An empty level means "whatever the model does on its own"; anything else is
     # one of OpenRouter's efforts. The thinking itself is never shown, so ask for
     # it to be left out of the reply.
-    if reasoning:
+    if reasoning and provider == "openrouter":
         payload["reasoning"] = {"effort": reasoning, "exclude": True}
     try:
         data = _request(
             f"{base_url.rstrip('/')}/chat/completions",
             json.dumps(payload).encode("utf-8"),
-            _headers("openrouter", api_key, "application/json"),
+            _headers(provider, api_key, "application/json"),
             timeout=timeout,
         )
     except ApiError as exc:
-        raise explain(exc, "OpenRouter") from None
+        raise explain(exc, service) from None
     choices = data.get("choices") or []
     if not choices:
         raise ApiError(_extract_error(json.dumps(data)))
@@ -210,30 +213,31 @@ def cleanup(text, api_key, model, system_prompt, reasoning="",
 
 
 def chat(messages, api_key, model, system_prompt, reasoning="",
-         base_url=OPENROUTER_URL, timeout=180):
+         base_url=OPENROUTER_URL, timeout=180, provider="openrouter",
+         service="OpenRouter"):
     """A conversation, rather than one transcript rewritten.
 
     The messages are the whole history and come back unchanged; the caller keeps
     them, because there is no session on OpenRouter's side to resume.
     """
-    if not api_key:
+    if provider != "ollama" and not api_key:
         raise ApiError(t("{service} API key is empty. Add it in Settings.",
-                         service="OpenRouter"))
+                         service=service))
     payload = {
         "model": model,
         "messages": [{"role": "system", "content": system_prompt}] + list(messages),
     }
-    if reasoning:
+    if reasoning and provider == "openrouter":
         payload["reasoning"] = {"effort": reasoning, "exclude": True}
     try:
         data = _request(
             f"{base_url.rstrip('/')}/chat/completions",
             json.dumps(payload).encode("utf-8"),
-            _headers("openrouter", api_key, "application/json"),
+            _headers(provider, api_key, "application/json"),
             timeout=timeout,
         )
     except ApiError as exc:
-        raise explain(exc, "OpenRouter") from None
+        raise explain(exc, service) from None
     choices = data.get("choices") or []
     if not choices:
         raise ApiError(_extract_error(json.dumps(data)))
@@ -311,3 +315,23 @@ def openai_models(api_key, base_url=OPENAI_URL):
     ids = [m["id"] for m in data.get("data", []) if m.get("id")]
     audio = [i for i in ids if "transcribe" in i or "whisper" in i]
     return sorted(audio or ids)
+
+
+def ollama_models(base_url="http://localhost:11434/v1"):
+    """Local Ollama model names.
+
+    Ollama's OpenAI-compatible endpoint exposes /v1/models on recent versions;
+    the native /api/tags endpoint is kept as a fallback for older installs.
+    """
+    root = base_url.rstrip("/")
+    try:
+        data = _get_json(f"{root}/models", {"User-Agent": USER_AGENT})
+        ids = [m["id"] for m in data.get("data", []) if m.get("id")]
+        if ids:
+            return sorted(ids)
+    except ApiError:
+        pass
+
+    native = root[:-3] if root.endswith("/v1") else root
+    data = _get_json(f"{native}/api/tags", {"User-Agent": USER_AGENT})
+    return sorted(m["name"] for m in data.get("models", []) if m.get("name"))

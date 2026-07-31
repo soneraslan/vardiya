@@ -118,13 +118,16 @@ class MeetingPipeline(QObject):
 
             self._check()
             self._say(t("Writing the minutes…"))
+            minutes_target = self.conf.llm_target("meeting")
             minutes = api.cleanup(
                 transcript,
-                self.conf.openrouter_key(),
-                self.conf["meeting_model"],
+                minutes_target.api_key,
+                minutes_target.model,
                 self.conf.meeting_prompt(),
                 reasoning=self.conf["meeting_reasoning"],
-                base_url=self.conf["openrouter_base_url"],
+                base_url=minutes_target.base_url,
+                provider=minutes_target.provider,
+                service=minutes_target.service,
                 timeout=600,
             )
             title = self._write(doc_path, minutes, transcript, entry)
@@ -201,6 +204,7 @@ class MeetingPipeline(QObject):
     def _cleanup(self, transcript):
         conf = self.conf
         prompt = conf.cleanup_prompt(with_timestamps=True, with_speakers=True)
+        target = conf.llm_target("cleanup")
         out = []
         blocks = filetranscribe.split_text(transcript, True)
         for index, block in enumerate(blocks, start=1):
@@ -210,11 +214,13 @@ class MeetingPipeline(QObject):
                             index=index, count=len(blocks)))
             out.append(api.cleanup(
                 block,
-                conf.openrouter_key(),
-                conf["cleanup_model"],
+                target.api_key,
+                target.model,
                 prompt,
                 reasoning=conf["cleanup_reasoning"],
-                base_url=conf["openrouter_base_url"],
+                base_url=target.base_url,
+                provider=target.provider,
+                service=target.service,
             ))
         return "\n".join(out)
 
